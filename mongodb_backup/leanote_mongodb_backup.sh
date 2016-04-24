@@ -18,6 +18,18 @@ save_backup()
     backup_checksum=$2
     upload=${BACKUP_ROOT}${BACKUP_PREFIX}_`date +%s`_${backup_checksum}.tar.gz
     osscmd put $localfile $upload
+    return $?
+}
+
+send_mail()
+{
+    status=$1
+    msg=$2
+    if [ $status -ne 0 ]; then
+        /home/admin/chxia/tools/mail.py "[LeanoteBackup Failed]" "$msg"
+    else
+        /home/admin/chxia/tools/mail.py "[LeanoteBackup Successfully]" "$msg"
+    fi
 }
 
 supply_backup_buffer()
@@ -52,6 +64,7 @@ backup()
     mongodump -d leanote -o $dump 
     if [ $? != 0 ]; then
         echo "mongodump error!!!" 
+        send_mail 1 "MongoDump ERROR!"
         return
     fi
     checksum=`dir_checksum $dump`
@@ -60,8 +73,11 @@ backup()
         echo "do a backup now"
         localfile="leanote_mongodb.tar.gz"
         rm $localfile -f; tar -zcf $localfile $dump
-        save_backup $localfile $checksum
-
+        if save_backup $localfile $checksum; then
+            send_mail 0 "Checksum file in oss: $checksum"
+        else
+            send_mail 1 "Failed to save backup in oss."
+        fi
     else
         echo "backup already exists"
     fi
