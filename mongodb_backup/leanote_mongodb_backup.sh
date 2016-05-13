@@ -73,8 +73,9 @@ backup()
         echo "do a backup now"
         localfile="leanote_mongodb.tar.gz"
         rm $localfile -f; tar -zcf $localfile $dump
+        size=`du -sh $localfile | awk '{print $1}'`
         if save_backup $localfile $checksum; then
-            send_mail 0 "Checksum file in oss: $checksum"
+            send_mail 0 "Checksum file in oss: $checksum , size $size"
         else
             send_mail 1 "Failed to save backup in oss."
         fi
